@@ -3,10 +3,43 @@ import { AudienceOriginRequest, EndPoints } from "../../../api/audience-origin";
 import { useQuery } from "@tanstack/react-query";
 import { WppAccordion, WppSpinner, WppTypography } from "@platform-ui-kit/components-library-react";
 import { IngestionGrid } from "../IngestionGrid/IngestionGrid";
-import SecondDataTable from "./SecondDataTable"; // Import the new component
+import { SecondDataTable } from "./SecondDataTable"; // Import the SecondDataTable component
 import styles from "../MetadataIngestion/new-metadata-ingestion-workflow.module.scss";
 
-// ... other code remains unchanged
+const useCombinedMetadataDiff = (gcsFileLocation1, gcsFileLocation2, survey) => {
+    return useQuery(
+        ["combinedMetadataDiff", gcsFileLocation1, gcsFileLocation2, survey],
+        async () => {
+            const [response1, response2] = await Promise.all([
+                AudienceOriginRequest.get(`${EndPoints.NetMetadataDiff}?fileName=${gcsFileLocation2}&survey=${survey}`),
+                AudienceOriginRequest.get(`${EndPoints.NetyamldataDiff}?fileName=${gcsFileLocation1}&survey=${survey}`)
+            ]);
+            return { data1: response1.data, data2: response2.data };
+        },
+        {
+            retry: false,
+        }
+    );
+};
+
+const columnDefsAdded = [
+    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
+    { headerName: "Op", field: "op", sortable: true },
+    { headerName: "Path", field: "path", sortable: true },
+];
+
+const columnDefsModified = [
+    { headerName: "Key", field: "key", sortable: true },
+    { headerName: "Field Name", field: "fieldName", sortable: true },
+    { headerName: "Old Value", field: "oldValue", sortable: true },
+    { headerName: "New Value", field: "newValue", sortable: true },
+];
+
+const columnDefsDeleted = [
+    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
+    { headerName: "Op", field: "op", sortable: true },
+    { headerName: "Path", field: "path", sortable: true },
+];
 
 export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation2, onSuccess }) => {
     const { status, data, error, isFetching } = useCombinedMetadataDiff(gcsFileLocation1, gcsFileLocation2, wave);
@@ -17,9 +50,10 @@ export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation
         }
     }, [error, data, isFetching, onSuccess]);
 
+    // Filter data from the first response
     let addData = [], deleteData = [], modifyData = [];
 
-    if (data) {
+    if (data && data.data1) {
         addData = data.data1.sheet.filter(item => item.added);
         deleteData = data.data1.sheet.filter(item => item.deleted);
         modifyData = data.data1.sheet.filter(item => item.modified);
@@ -49,7 +83,7 @@ export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation
                             <div style={{ marginBottom: "0.5rem" }}>
                                 <WppTypography type="l-midi">Old File (Processed):</WppTypography>{" "}
                                 <WppTypography type="l-body" className={styles.highlightText}>
-                                    {getFileName(data.data1.files[0])}
+                                    {data.data1.files[0]} {/* Assuming file names are strings */}
                                 </WppTypography>
                             </div>
                         )}
@@ -57,7 +91,7 @@ export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation
                             <div>
                                 <WppTypography type="l-midi">New File (Pre-Processed):</WppTypography>{" "}
                                 <WppTypography type="l-body" className={styles.highlightText}>
-                                    {getFileName(data.data1.files[1])}
+                                    {data.data1.files[1]} {/* Assuming file names are strings */}
                                 </WppTypography>
                             </div>
                         )}
@@ -82,7 +116,7 @@ export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation
                             </WppAccordion>
                         </div>
                     </div>
-                    {/* Use the SecondDataTable component and pass the second data */}
+                    {/* Pass the second data to the child component */}
                     <SecondDataTable secondData={data.data2} /> {/* Pass second data */}
                 </div>
             )}
