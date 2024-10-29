@@ -1,48 +1,91 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { AudienceOriginRequest, EndPoints } from "../../../api/audience-origin";
+import { useQuery } from "@tanstack/react-query";
+import { WppAccordion, WppSpinner, WppTypography } from "@platform-ui-kit/components-library-react";
 import { IngestionGrid } from "../IngestionGrid/IngestionGrid";
+import SecondDataTable from "./SecondDataTable"; // Import the new component
+import styles from "../MetadataIngestion/new-metadata-ingestion-workflow.module.scss";
 
-const columnDefsSecondDataAdded = [
-    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
-    { headerName: "Op", field: "op", sortable: true },
-    { headerName: "Path", field: "path", sortable: true },
-];
+// ... other code remains unchanged
 
-const columnDefsSecondDataModified = [
-    { headerName: "Key", field: "key", sortable: true },
-    { headerName: "Field Name", field: "fieldName", sortable: true },
-    { headerName: "Old Value", field: "oldValue", sortable: true },
-    { headerName: "New Value", field: "newValue", sortable: true },
-];
+export const CombinedWeightDiffStep = ({ wave, gcsFileLocation1, gcsFileLocation2, onSuccess }) => {
+    const { status, data, error, isFetching } = useCombinedMetadataDiff(gcsFileLocation1, gcsFileLocation2, wave);
 
-const columnDefsSecondDataDeleted = [
-    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
-    { headerName: "Op", field: "op", sortable: true },
-    { headerName: "Path", field: "path", sortable: true },
-];
+    useEffect(() => {
+        if (onSuccess) {
+            onSuccess(isFetching ? false : !error);
+        }
+    }, [error, data, isFetching, onSuccess]);
 
-const SecondDataTable = ({ secondData }) => {
-    // Filter the secondData for added, modified, and deleted items
-    const addData = secondData.sheet.filter(item => item.added);
-    const deleteData = secondData.sheet.filter(item => item.deleted);
-    const modifyData = secondData.sheet.filter(item => item.modified);
+    let addData = [], deleteData = [], modifyData = [];
+
+    if (data) {
+        addData = data.data1.sheet.filter(item => item.added);
+        deleteData = data.data1.sheet.filter(item => item.deleted);
+        modifyData = data.data1.sheet.filter(item => item.modified);
+    }
+
+    const getErrorMessage = (error) => {
+        return error?.response?.data?.message || error.message || "Something went wrong, please refresh.";
+    };
 
     return (
-        <div>
-            <h2>Second Data Table</h2>
-            <div style={{ marginBottom: '20px' }}>
-                <h3>Added</h3>
-                <IngestionGrid columns={columnDefsSecondDataAdded} data={addData} />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-                <h3>Modified</h3>
-                <IngestionGrid columns={columnDefsSecondDataModified} data={modifyData} />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-                <h3>Deleted</h3>
-                <IngestionGrid columns={columnDefsSecondDataDeleted} data={deleteData} />
-            </div>
+        <div style={{ overflow: "scroll", height: "100%", width: "100%" }}>
+            {isFetching ? (
+                <div className={styles.centerContent}>
+                    <WppSpinner size="m" />
+                </div>
+            ) : error || !data ? (
+                <div className={styles.centerContent}>
+                    <WppTypography>
+                        <strong>Warning: </strong>
+                        {getErrorMessage(error)}
+                    </WppTypography>
+                </div>
+            ) : (
+                <div>
+                    <div style={{ margin: "2rem" }}>
+                        {data.data1.files[0] && (
+                            <div style={{ marginBottom: "0.5rem" }}>
+                                <WppTypography type="l-midi">Old File (Processed):</WppTypography>{" "}
+                                <WppTypography type="l-body" className={styles.highlightText}>
+                                    {getFileName(data.data1.files[0])}
+                                </WppTypography>
+                            </div>
+                        )}
+                        {data.data1.files[1] && (
+                            <div>
+                                <WppTypography type="l-midi">New File (Pre-Processed):</WppTypography>{" "}
+                                <WppTypography type="l-body" className={styles.highlightText}>
+                                    {getFileName(data.data1.files[1])}
+                                </WppTypography>
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ marginTop: "1rem", marginLeft: "2rem", marginRight: "3rem" }}>
+                        <div style={{ marginBottom: '20px' }}>
+                            <WppAccordion size="m">
+                                <WppTypography type="m-strong" slot="header">Added</WppTypography>
+                                <IngestionGrid columns={columnDefsAdded} data={addData} status={status} />
+                            </WppAccordion>
+                        </div>
+                        <div style={{ marginBottom: '20px' }}>
+                            <WppAccordion size="m">
+                                <WppTypography type="m-strong" slot="header">Modified</WppTypography>
+                                <IngestionGrid columns={columnDefsModified} data={modifyData} status={status} />
+                            </WppAccordion>
+                        </div>
+                        <div style={{ marginBottom: '20px' }}>
+                            <WppAccordion size="m">
+                                <WppTypography type="m-strong" slot="header">Deleted</WppTypography>
+                                <IngestionGrid columns={columnDefsDeleted} data={deleteData} status={status} />
+                            </WppAccordion>
+                        </div>
+                    </div>
+                    {/* Use the SecondDataTable component and pass the second data */}
+                    <SecondDataTable secondData={data.data2} /> {/* Pass second data */}
+                </div>
+            )}
         </div>
     );
 };
-
-export default SecondDataTable;
