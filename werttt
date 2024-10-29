@@ -1,0 +1,48 @@
+import React from "react";
+import { IngestionGrid } from "../IngestionGrid/IngestionGrid";
+
+const columnDefsSecondDataAdded = [
+    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
+    { headerName: "Op", field: "op", sortable: true },
+    { headerName: "Path", field: "path", sortable: true },
+];
+
+const columnDefsSecondDataModified = [
+    { headerName: "Key", field: "key", sortable: true },
+    { headerName: "Field Name", field: "fieldName", sortable: true },
+    { headerName: "Old Value", field: "oldValue", sortable: true },
+    { headerName: "New Value", field: "newValue", sortable: true },
+];
+
+const columnDefsSecondDataDeleted = [
+    { headerName: "File", field: "file", sortable: true, maxWidth: 200 },
+    { headerName: "Op", field: "op", sortable: true },
+    { headerName: "Path", field: "path", sortable: true },
+];
+
+const SecondDataTable = ({ secondData }) => {
+    // Filter the secondData for added, modified, and deleted items
+    const addData = secondData.sheet.filter(item => item.added);
+    const deleteData = secondData.sheet.filter(item => item.deleted);
+    const modifyData = secondData.sheet.filter(item => item.modified);
+
+    return (
+        <div>
+            <h2>Second Data Table</h2>
+            <div style={{ marginBottom: '20px' }}>
+                <h3>Added</h3>
+                <IngestionGrid columns={columnDefsSecondDataAdded} data={addData} />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+                <h3>Modified</h3>
+                <IngestionGrid columns={columnDefsSecondDataModified} data={modifyData} />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+                <h3>Deleted</h3>
+                <IngestionGrid columns={columnDefsSecondDataDeleted} data={deleteData} />
+            </div>
+        </div>
+    );
+};
+
+export default SecondDataTable;
